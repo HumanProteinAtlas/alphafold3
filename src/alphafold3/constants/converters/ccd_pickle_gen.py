@@ -15,6 +15,7 @@ import gzip
 import pickle
 import sys
 
+from absl import logging
 from alphafold3.cpp import cif_dict
 import tqdm
 
@@ -25,7 +26,7 @@ def main(argv: Sequence[str]) -> None:
 
   _, input_file, output_file = argv
 
-  print(f'Parsing {input_file}', flush=True)
+  logging.info(f'Parsing {input_file}', flush=True)
   if input_file.endswith('.gz'):
     opener = gzip.open
   else:
@@ -41,10 +42,10 @@ def main(argv: Sequence[str]) -> None:
   }
   assert len(result) == whole_file.count(b'data_')
 
-  print(f'Writing {output_file}', flush=True)
+  logging.info(f'Writing {output_file}', flush=True)
   with open(output_file, 'wb') as f:
     pickle.dump(result, f, protocol=pickle.HIGHEST_PROTOCOL)
-  print('Done', flush=True)
+  logging.info('Done', flush=True)
 
 if __name__ == '__main__':
   main(sys.argv)

@@ -16,6 +16,7 @@ import pickle
 import re
 import sys
 
+from absl import logging
 from alphafold3.common import resources
 import tqdm
 
@@ -63,17 +64,17 @@ def main(argv: Sequence[str]) -> None:
         'Directory to write to must be specified as a command-line arguments.'
     )
 
-  print(f'Loading {_CCD_PICKLE_FILE}', flush=True)
+  logging.info(f'Loading {_CCD_PICKLE_FILE}', flush=True)
   with open(_CCD_PICKLE_FILE, 'rb') as f:
     ccd: Mapping[str, Mapping[str, Sequence[str]]] = pickle.load(f)
   output_path = pathlib.Path(argv[1])
   output_path.parent.mkdir(exist_ok=True)
-  print('Finding ions and glycans', flush=True)
+  logging.info('Finding ions and glycans', flush=True)
   result = find_ions_and_glycans_in_ccd(ccd)
-  print(f'writing to {output_path}', flush=True)
+  logging.info(f'writing to {output_path}', flush=True)
   with output_path.open('wb') as f:
     pickle.dump(result, f)
-  print('Done', flush=True)
+  logging.info('Done', flush=True)
 
 
 if __name__ == '__main__':

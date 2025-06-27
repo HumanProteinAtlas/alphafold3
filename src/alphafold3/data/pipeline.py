@@ -17,6 +17,7 @@ import functools
 import logging
 import time
 
+from absl import logging
 from alphafold3.common import folding_input
 from alphafold3.constants import mmcif_names
 from alphafold3.data import msa
@@ -533,7 +534,7 @@ class DataPipeline:
     """Runs MSA and template tools and returns a new Input with the results."""
     processed_chains = []
     for chain in fold_input.chains:
-      print(f'Running data pipeline for chain {chain.id}...')
+      logging.info(f'Running data pipeline for chain {chain.id}...')
       process_chain_start_time = time.time()
       match chain:
         case folding_input.ProteinChain():
@@ -542,7 +543,7 @@ class DataPipeline:
           processed_chains.append(self.process_rna_chain(chain))
         case _:
           processed_chains.append(chain)
-      print(
+      logging.info(
           f'Running data pipeline for chain {chain.id} took'
           f' {time.time() - process_chain_start_time:.2f} seconds',
       )

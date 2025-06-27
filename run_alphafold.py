@@ -36,6 +36,7 @@ from typing import overload
 
 from absl import app
 from absl import flags
+from absl import logging
 from alphafold3.common import folding_input
 from alphafold3.common import resources
 from alphafold3.constants import chemical_components
@@ -403,7 +404,7 @@ def predict_structure(
 ) -> Sequence[ResultsForSeed]:
   """Runs the full inference pipeline to predict structures for each seed."""
 
-  print(f'Featurising data with {len(fold_input.rng_seeds)} seed(s)...')
+  logging.info(f'Featurising data with {len(fold_input.rng_seeds)} seed(s)...')
   featurisation_start_time = time.time()
   ccd = chemical_components.cached_ccd(user_ccd=fold_input.user_ccd)
   featurised_examples = featurisation.featurise_input(
@@ -413,31 +414,31 @@ def predict_structure(
       verbose=True,
       conformer_max_iterations=conformer_max_iterations,
   )
-  print(
+  logging.info(
       f'Featurising data with {len(fold_input.rng_seeds)} seed(s) took'
       f' {time.time() - featurisation_start_time:.2f} seconds.'
   )
-  print(
+  logging.info(
       'Running model inference and extracting output structure samples with'
       f' {len(fold_input.rng_seeds)} seed(s)...'
   )
   all_inference_start_time = time.time()
   all_inference_results = []
   for seed, example in zip(fold_input.rng_seeds, featurised_examples):
-    print(f'Running model inference with seed {seed}...')
+    logging.info(f'Running model inference with seed {seed}...')
     inference_start_time = time.time()
     rng_key = jax.random.PRNGKey(seed)
     result = model_runner.run_inference(example, rng_key)
-    print(
+    logging.info(
         f'Running model inference with seed {seed} took'
         f' {time.time() - inference_start_time:.2f} seconds.'
     )
-    print(f'Extracting output structure samples with seed {seed}...')
+    logging.info(f'Extracting output structure samples with seed {seed}...')
     extract_structures = time.time()
     inference_results = model_runner.extract_structures(
         batch=example, result=result, target_name=fold_input.name
     )
-    print(
+    logging.info(
         f'Extracting {len(inference_results)} output structure samples with'
         f' seed {seed} took {time.time() - extract_structures:.2f} seconds.'
     )
@@ -452,7 +453,7 @@ def predict_structure(
             embeddings=embeddings,
         )
     )
-  print(
+  logging.info(
       'Running model inference and extracting output structures with'
       f' {len(fold_input.rng_seeds)} seed(s) took'
       f' {time.time() - all_inference_start_time:.2f} seconds.'
@@ -467,7 +468,7 @@ def write_fold_input_json(
   """Writes the input JSON to the output directory."""
   os.makedirs(output_dir, exist_ok=True)
   path = os.path.join(output_dir, f'{fold_input.sanitised_name()}_data.json')
-  print(f'Writing model input JSON to {path}')
+  logging.info(f'Writing model input JSON to {path}')
   with open(path, 'wt') as f:
     f.write(fold_input.to_json())
 
@@ -601,7 +602,7 @@ def process_fold_input(
   Raises:
     ValueError: If the fold input has no chains.
   """
-  print(f'\nRunning fold job {fold_input.name}...')
+  logging.info(f'Running fold job {fold_input.name}...')
 
   if not fold_input.chains:
     raise ValueError('Fold input has no chains.')
@@ -614,26 +615,26 @@ def process_fold_input(
     new_output_dir = (
         f'{output_dir}_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}'
     )
-    print(
+    logging.info(
         f'Output will be written in {new_output_dir} since {output_dir} is'
         ' non-empty.'
     )
     output_dir = new_output_dir
   else:
-    print(f'Output will be written in {output_dir}')
+    logging.info(f'Output will be written in {output_dir}')
 
   if data_pipeline_config is None:
-    print('Skipping data pipeline...')
+    logging.info('Skipping data pipeline...')
   else:
-    print('Running data pipeline...')
+    logging.info('Running data pipeline...')
     fold_input = pipeline.DataPipeline(data_pipeline_config).process(fold_input)
 
   write_fold_input_json(fold_input, output_dir)
   if model_runner is None:
-    print('Skipping model inference...')
+    logging.info('Skipping model inference...')
     output = fold_input
   else:
-    print(
+    logging.info(
         f'Predicting 3D structure for {fold_input.name} with'
         f' {len(fold_input.rng_seeds)} seed(s)...'
     )
@@ -643,7 +644,7 @@ def process_fold_input(
         buckets=buckets,
         conformer_max_iterations=conformer_max_iterations,
     )
-    print(f'Writing outputs with {len(fold_input.rng_seeds)} seed(s)...')
+    logging.info(f'Writing outputs with {len(fold_input.rng_seeds)} seed(s)...')
     write_outputs(
         all_inference_results=all_inference_results,
         output_dir=output_dir,
@@ -651,7 +652,7 @@ def process_fold_input(
     )
     output = all_inference_results
 
-  print(f'Fold job {fold_input.name} done, output written to {output_dir}\n')
+  logging.info(f'Fold job {fold_input.name} done, output written to {output_dir}\n')
   return output
 
 
@@ -689,7 +690,7 @@ def main(_):
   try:
     os.makedirs(_OUTPUT_DIR.value, exist_ok=True)
   except OSError as e:
-    print(f'Failed to create output directory {_OUTPUT_DIR.value}: {e}')
+    logging.info(f'Failed to create output directory {_OUTPUT_DIR.value}: {e}')
     raise
 
   if _RUN_INFERENCE.value:
@@ -731,7 +732,7 @@ def main(_):
       break_on_hyphens=False,
       width=80,
   )
-  print('\n' + '\n'.join(notice) + '\n')
+  logging.info('\n'.join(notice))
 
   if _RUN_DATA_PIPELINE.value:
     expand_path = lambda x: replace_db_dir(x, DB_DIR.value)
@@ -762,12 +763,12 @@ def main(_):
 
   if _RUN_INFERENCE.value:
     devices = jax.local_devices(backend='gpu')
-    print(
+    logging.info(
         f'Found local devices: {devices}, using device {_GPU_DEVICE.value}:'
         f' {devices[_GPU_DEVICE.value]}'
     )
 
-    print('Building model from scratch...')
+    logging.info('Building model from scratch...')
     model_runner = ModelRunner(
         config=make_model_config(
             flash_attention_implementation=typing.cast(
@@ -781,7 +782,7 @@ def main(_):
         model_dir=pathlib.Path(MODEL_DIR.value),
     )
     # Check we can load the model parameters before launching anything.
-    print('Checking that model parameters can be loaded...')
+    logging.info('Checking that model parameters can be loaded...')
     _ = model_runner.model_params
   else:
     model_runner = None
@@ -789,7 +790,7 @@ def main(_):
   num_fold_inputs = 0
   for fold_input in fold_inputs:
     if _NUM_SEEDS.value is not None:
-      print(f'Expanding fold job {fold_input.name} to {_NUM_SEEDS.value} seeds')
+      logging.info(f'Expanding fold job {fold_input.name} to {_NUM_SEEDS.value} seeds')
       fold_input = fold_input.with_multiple_seeds(_NUM_SEEDS.value)
     process_fold_input(
         fold_input=fold_input,
@@ -802,7 +803,7 @@ def main(_):
     )
     num_fold_inputs += 1
 
-  print(f'Done running {num_fold_inputs} fold jobs.')
+  logging.info(f'Done running {num_fold_inputs} fold jobs.')
 
 
 if __name__ == '__main__':

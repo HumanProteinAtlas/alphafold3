@@ -14,6 +14,7 @@ from collections.abc import Sequence
 import datetime
 import time
 
+from absl import logging
 from alphafold3.common import folding_input
 from alphafold3.constants import chemical_components
 from alphafold3.model import features
@@ -77,7 +78,7 @@ def featurise_input(
   for rng_seed in fold_input.rng_seeds:
     featurisation_start_time = time.time()
     if verbose:
-      print(f'Featurising data with seed {rng_seed}.')
+      logging.info(f'Featurising data with seed {rng_seed}.')
     batch = data_pipeline.process_item(
         fold_input=fold_input,
         ccd=ccd,
@@ -85,7 +86,7 @@ def featurise_input(
         random_seed=rng_seed,
     )
     if verbose:
-      print(
+      logging.info(
           f'Featurising data with seed {rng_seed} took'
           f' {time.time() - featurisation_start_time:.2f} seconds.'
       )
